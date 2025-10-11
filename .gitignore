@@ -1,4 +1,5 @@
 *.efi
 *.out
+*.o
 *.img
 mnt/
