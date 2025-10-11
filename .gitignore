@@ -2,5 +2,6 @@
 *.out
 *.o
 *.img
+*.elf
 mnt/
 devenv/
