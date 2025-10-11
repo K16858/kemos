@@ -12,8 +12,14 @@ KERNEL_ELF := kernel.elf
 DISK_IMG := disk.img
 MOUNT_POINT := mnt
 
-# スクリプトディレクトリ
+# ソースディレクトリ
+LOADER_DIR := $(PROJECT_ROOT)/LoaderPkg
+KERNEL_DIR := $(PROJECT_ROOT)/kernel
 SCRIPTS_DIR := $(PROJECT_ROOT)/scripts
+
+# ソースファイル
+LOADER_SRC := $(LOADER_DIR)/Main.c
+KERNEL_SRC := $(KERNEL_DIR)/main.cpp
 
 # === デフォルトターゲット ===
 all: build
@@ -42,7 +48,7 @@ loader: $(LOADER_EFI)
 	@cp $(LOADER_EFI) $(PROJECT_ROOT)/Loader.efi
 	@ls -lh $(PROJECT_ROOT)/Loader.efi
 
-$(LOADER_EFI): Main.c LoaderPkg/Loader.inf LoaderPkg/LoaderPkg.dsc
+$(LOADER_EFI): $(LOADER_SRC) $(LOADER_DIR)/Loader.inf $(LOADER_DIR)/LoaderPkg.dsc
 	@echo "[BUILD] Building bootloader..."
 	@if [ ! -d $(EDK2_DIR) ]; then \
 		echo "[ERROR] EDK2 not found: $(EDK2_DIR)"; \
@@ -50,7 +56,7 @@ $(LOADER_EFI): Main.c LoaderPkg/Loader.inf LoaderPkg/LoaderPkg.dsc
 	fi
 	@if [ ! -L $(EDK2_DIR)/LoaderPkg ]; then \
 		echo "[INFO] Linking LoaderPkg to EDK2..."; \
-		ln -s $(PROJECT_ROOT)/LoaderPkg $(EDK2_DIR)/LoaderPkg; \
+		ln -s $(LOADER_DIR) $(EDK2_DIR)/LoaderPkg; \
 	fi
 	@cd $(EDK2_DIR) && \
 		bash -c "source edksetup.sh > /dev/null 2>&1 && build" || \
@@ -60,14 +66,15 @@ $(LOADER_EFI): Main.c LoaderPkg/Loader.inf LoaderPkg/LoaderPkg.dsc
 kernel: $(KERNEL_ELF)
 	@echo "[DONE] Kernel build completed"
 
-$(KERNEL_ELF): main.cpp devenv/buildenv.sh
+$(KERNEL_ELF): $(KERNEL_SRC) devenv/buildenv.sh
 	@echo "[BUILD] Building kernel..."
 	@bash -c "source devenv/buildenv.sh && \
+		cd $(KERNEL_DIR) && \
 		clang++ --target=x86_64-elf -O2 -Wall -g --std=c++17 \
 		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
 		-c main.cpp -o main.o && \
 		ld.lld --entry KernelMain -z norelro --image-base 0x100000 \
-		--static -o $(KERNEL_ELF) main.o" || \
+		--static -o $(PROJECT_ROOT)/$(KERNEL_ELF) main.o" || \
 		(echo "[ERROR] Kernel build failed"; exit 1)
 	@ls -lh $(KERNEL_ELF)
 
@@ -113,7 +120,8 @@ test: clean build disk
 # === クリーンアップ ===
 clean:
 	@echo "[CLEAN] Cleaning up..."
-	@rm -f Loader.efi $(KERNEL_ELF) main.o $(DISK_IMG)
+	@rm -f Loader.efi $(KERNEL_ELF) $(DISK_IMG)
+	@rm -f $(KERNEL_DIR)/main.o
 	@rm -rf $(MOUNT_POINT)
 	@if [ -d $(BUILD_DIR) ]; then \
 		echo "  Cleaning EDK2 build directory..."; \
