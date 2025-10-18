@@ -1,4 +1,11 @@
 #include <cstdint>
+#include <cstddef>
+
+#include "frame_buffer_config.hpp"
+
+struct PixelColor {
+    uint8_t r, g, b;
+}
 
 extern "C" void KernelMain(uint64_t framebuffer_base, uint64_t framebuffer_size) {
     uint8_t* frame_buffer = reinterpret_cast<uint8_t*>(framebuffer_base);
