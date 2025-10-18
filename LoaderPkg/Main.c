@@ -8,6 +8,7 @@
 #include  <Protocol/DiskIo2.h>
 #include  <Protocol/BlockIo.h>
 #include  <Guid/FileInfo.h>
+#include  "frame_buffer_config.hpp"
 
 struct MemoryMap {
   UINTN buffer_size;
@@ -67,7 +68,8 @@ EFI_STATUS SaveMemoryMap(struct MemoryMap* map, EFI_FILE_PROTOCOL* file) {
     return status;
   }
 
-  Print(L"map->buffer = %08lx, map->map_size = %08lx\n", map->buffer, map->map_size);
+  Print(L"map->buffer = %08lx, map->map_size = %08lx\n",
+      map->buffer, map->map_size);
 
   EFI_PHYSICAL_ADDRESS iter;
   int i;
@@ -120,7 +122,8 @@ EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL** root) {
   return fs->OpenVolume(fs, root);
 }
 
-EFI_STATUS OpenGOP(EFI_HANDLE image_handle, EFI_GRAPHICS_OUTPUT_PROTOCOL** gop) {
+EFI_STATUS OpenGOP(EFI_HANDLE image_handle,
+                   EFI_GRAPHICS_OUTPUT_PROTOCOL** gop) {
   EFI_STATUS status;
   UINTN num_gop_handles = 0;
   EFI_HANDLE* gop_handles = NULL;
@@ -168,16 +171,16 @@ const CHAR16* GetPixelFormatUnicode(EFI_GRAPHICS_PIXEL_FORMAT fmt) {
   }
 }
 
-// #@@range_begin(halt)
 void Halt(void) {
   while (1) __asm__("hlt");
 }
-// #@@range_end(halt)
 
-EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE* system_table) {
+EFI_STATUS EFIAPI UefiMain(
+    EFI_HANDLE image_handle,
+    EFI_SYSTEM_TABLE* system_table) {
   EFI_STATUS status;
 
-  Print(L"Hello, KEMOS World!\n");
+  Print(L"Hello, Mikan World!\n");
 
   CHAR8 memmap_buf[4096 * 4];
   struct MemoryMap memmap = {sizeof(memmap_buf), memmap_buf, 0, 0, 0, 0};
@@ -222,19 +225,19 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE* system_tab
   }
 
   Print(L"Resolution: %ux%u, Pixel Format: %s, %u pixels/line\n",
-        gop->Mode->Info->HorizontalResolution,
-        gop->Mode->Info->VerticalResolution,
-        GetPixelFormatUnicode(gop->Mode->Info->PixelFormat),
-        gop->Mode->Info->PixelsPerScanLine);
+      gop->Mode->Info->HorizontalResolution,
+      gop->Mode->Info->VerticalResolution,
+      GetPixelFormatUnicode(gop->Mode->Info->PixelFormat),
+      gop->Mode->Info->PixelsPerScanLine);
   Print(L"Frame Buffer: 0x%0lx - 0x%0lx, Size: %lu bytes\n",
-        gop->Mode->FrameBufferBase,
-        gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
-        gop->Mode->FrameBufferSize);
+      gop->Mode->FrameBufferBase,
+      gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
+      gop->Mode->FrameBufferSize);
 
-//   UINT8* frame_buffer = (UINT8*)gop->Mode->FrameBufferBase;
-//   for (UINTN i = 0; i < gop->Mode->FrameBufferSize; ++i) {
-//     frame_buffer[i] = 255;
-//   }
+  UINT8* frame_buffer = (UINT8*)gop->Mode->FrameBufferBase;
+  for (UINTN i = 0; i < gop->Mode->FrameBufferSize; ++i) {
+    frame_buffer[i] = 255;
+  }
 
   EFI_FILE_PROTOCOL* kernel_file;
   status = root_dir->Open(
@@ -273,12 +276,10 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE* system_tab
     Print(L"error: %r", status);
     Halt();
   }
-  Print(L"KEMOS Kernel: 0x%0lx (%lu bytes)\n", kernel_base_addr, kernel_file_size);
+  Print(L"Kernel: 0x%0lx (%lu bytes)\n", kernel_base_addr, kernel_file_size);
 
   // #@@range_begin(exit_bs)
   status = gBS->ExitBootServices(image_handle, memmap.map_key);
-  Print(L"ExitBootServices status: %r\n", status);
-  
   if (EFI_ERROR(status)) {
     status = GetMemoryMap(&memmap);
     if (EFI_ERROR(status)) {
@@ -291,15 +292,34 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE* system_tab
       Halt();
     }
   }
-  #@@range_end(exit_bs)
-
-  Print(L"All done\n");
+  // #@@range_end(exit_bs)
 
   UINT64 entry_addr = *(UINT64*)(kernel_base_addr + 24);
 
-  typedef void EntryPointType(UINT64, UINT64);
+  // #@@range_begin(pass_frame_buffer_config)
+  struct FrameBufferConfig config = {
+    (UINT8*)gop->Mode->FrameBufferBase,
+    gop->Mode->Info->PixelsPerScanLine,
+    gop->Mode->Info->HorizontalResolution,
+    gop->Mode->Info->VerticalResolution,
+    0
+  };
+  switch (gop->Mode->Info->PixelFormat) {
+    case PixelRedGreenBlueReserved8BitPerColor:
+      config.pixel_format = kPixelRGBResv8BitPerColor;
+      break;
+    case PixelBlueGreenRedReserved8BitPerColor:
+      config.pixel_format = kPixelBGRResv8BitPerColor;
+      break;
+    default:
+      Print(L"Unimplemented pixel format: %d\n", gop->Mode->Info->PixelFormat);
+      Halt();
+  }
+
+  typedef void EntryPointType(const struct FrameBufferConfig*);
   EntryPointType* entry_point = (EntryPointType*)entry_addr;
-  entry_point(gop->Mode->FrameBufferBase, gop->Mode->FrameBufferSize);
+  entry_point(&config);
+  // #@@range_end(pass_frame_buffer_config)
 
   Print(L"All done\n");
 
