@@ -3,6 +3,7 @@
 #include  <Library/UefiBootServicesTableLib.h>
 #include  <Library/PrintLib.h>
 #include  <Library/MemoryAllocationLib.h>
+#include  <Library/BaseMemoryLib.h>
 #include  <Protocol/LoadedImage.h>
 #include  <Protocol/SimpleFileSystem.h>
 #include  <Protocol/DiskIo2.h>
@@ -175,12 +176,10 @@ void Halt(void) {
   while (1) __asm__("hlt");
 }
 
-EFI_STATUS EFIAPI UefiMain(
-    EFI_HANDLE image_handle,
-    EFI_SYSTEM_TABLE* system_table) {
+EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE* system_table) {
   EFI_STATUS status;
 
-  Print(L"Hello, Mikan World!\n");
+  Print(L"Hello, KEMOS World!\n");
 
   CHAR8 memmap_buf[4096 * 4];
   struct MemoryMap memmap = {sizeof(memmap_buf), memmap_buf, 0, 0, 0, 0};
@@ -234,10 +233,10 @@ EFI_STATUS EFIAPI UefiMain(
       gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
       gop->Mode->FrameBufferSize);
 
-  UINT8* frame_buffer = (UINT8*)gop->Mode->FrameBufferBase;
-  for (UINTN i = 0; i < gop->Mode->FrameBufferSize; ++i) {
-    frame_buffer[i] = 255;
-  }
+//   UINT8* frame_buffer = (UINT8*)gop->Mode->FrameBufferBase;
+//   for (UINTN i = 0; i < gop->Mode->FrameBufferSize; ++i) {
+//     frame_buffer[i] = 255;
+//   }
 
   EFI_FILE_PROTOCOL* kernel_file;
   status = root_dir->Open(
@@ -278,6 +277,68 @@ EFI_STATUS EFIAPI UefiMain(
   }
   Print(L"Kernel: 0x%0lx (%lu bytes)\n", kernel_base_addr, kernel_file_size);
 
+  // ELFヘッダー構造体定義
+  #pragma pack(1)
+  typedef struct {
+    UINT8  e_ident[16];
+    UINT16 e_type;
+    UINT16 e_machine;
+    UINT32 e_version;
+    UINT64 e_entry;
+    UINT64 e_phoff;
+    UINT64 e_shoff;
+    UINT32 e_flags;
+    UINT16 e_ehsize;
+    UINT16 e_phentsize;
+    UINT16 e_phnum;
+    UINT16 e_shentsize;
+    UINT16 e_shnum;
+    UINT16 e_shstrndx;
+  } Elf64_Ehdr;
+
+  typedef struct {
+    UINT32 p_type;
+    UINT32 p_flags;
+    UINT64 p_offset;
+    UINT64 p_vaddr;
+    UINT64 p_paddr;
+    UINT64 p_filesz;
+    UINT64 p_memsz;
+    UINT64 p_align;
+  } Elf64_Phdr;
+  #pragma pack()
+
+  #define PT_LOAD 1
+
+  // ELFヘッダーの検証とエントリーポイント取得
+  Elf64_Ehdr* elf_header = (Elf64_Ehdr*)kernel_base_addr;
+  
+  // ELFマジックナンバーチェック
+  if (elf_header->e_ident[0] != 0x7f ||
+      elf_header->e_ident[1] != 'E' ||
+      elf_header->e_ident[2] != 'L' ||
+      elf_header->e_ident[3] != 'F') {
+    Print(L"Invalid ELF magic: %02x %02x %02x %02x\n",
+          elf_header->e_ident[0], elf_header->e_ident[1],
+          elf_header->e_ident[2], elf_header->e_ident[3]);
+    Halt();
+  }
+
+  Print(L"ELF Entry Point: 0x%0lx\n", elf_header->e_entry);
+
+  // LOADABLEセグメントを正しいアドレスにコピー
+  Elf64_Phdr* phdr = (Elf64_Phdr*)(kernel_base_addr + elf_header->e_phoff);
+  for (UINT16 i = 0; i < elf_header->e_phnum; ++i) {
+    if (phdr[i].p_type != PT_LOAD) continue;
+
+    UINT64 segm_in_file = kernel_base_addr + phdr[i].p_offset;
+    CopyMem((VOID*)phdr[i].p_vaddr, (VOID*)segm_in_file, phdr[i].p_filesz);
+    
+    UINTN remain_bytes = phdr[i].p_memsz - phdr[i].p_filesz;
+    SetMem((VOID*)(phdr[i].p_vaddr + phdr[i].p_filesz), remain_bytes, 0);
+  }
+  Print(L"Kernel segments loaded\n");
+
   // #@@range_begin(exit_bs)
   status = gBS->ExitBootServices(image_handle, memmap.map_key);
   if (EFI_ERROR(status)) {
@@ -294,7 +355,7 @@ EFI_STATUS EFIAPI UefiMain(
   }
   // #@@range_end(exit_bs)
 
-  UINT64 entry_addr = *(UINT64*)(kernel_base_addr + 24);
+  UINT64 entry_addr = elf_header->e_entry;
 
   // #@@range_begin(pass_frame_buffer_config)
   struct FrameBufferConfig config = {
