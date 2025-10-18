@@ -18,6 +18,30 @@ class PixelWriter {
         const FrameBufferConfig& config_;
 };
 
+class RGBResv8BitPerColorPixelWriter : public PixelWriter {
+    public:
+        using PixelWriter::PixelWriter;
+
+        void Write(int x, int y, const PixelColor& color) override {
+            uint8_t* pixel = PixelAt(x, y);
+            pixel[0] = color.r;
+            pixel[1] = color.g;
+            pixel[2] = color.b;
+        }
+};
+
+class BGRResv8BitPerColorPixelWriter : public PixelWriter {
+    public:
+        using PixelWriter::PixelWriter;
+
+        void Write(int x, int y, const PixelColor& color) override {
+            uint8_t* pixel = PixelAt(x, y);
+            pixel[0] = color.b;
+            pixel[1] = color.g;
+            pixel[2] = color.r;
+        }
+};
+
 struct PixelColor {
     uint8_t r, g, b;
 };
