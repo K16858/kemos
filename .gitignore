@@ -3,5 +3,6 @@
 *.o
 *.img
 *.elf
+*.fd
 mnt/
 devenv/
