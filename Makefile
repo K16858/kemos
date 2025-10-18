@@ -70,10 +70,10 @@ $(KERNEL_ELF): $(KERNEL_SRC) devenv/buildenv.sh
 	@echo "[BUILD] Building kernel..."
 	@bash -c "source devenv/buildenv.sh && \
 		cd $(KERNEL_DIR) && \
-		clang++ --target=x86_64-elf -O2 -Wall -g --std=c++17 \
+		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
 		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
 		-c main.cpp -o main.o && \
-		ld.lld --entry KernelMain -z norelro --image-base 0x100000 \
+		ld.lld \$$LDFLAGS --entry KernelMain -z norelro --image-base 0x100000 \
 		--static -o $(PROJECT_ROOT)/$(KERNEL_ELF) main.o" || \
 		(echo "[ERROR] Kernel build failed"; exit 1)
 	@ls -lh $(KERNEL_ELF)
