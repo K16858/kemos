@@ -3,6 +3,10 @@
 
 #include "frame_buffer_config.hpp"
 
+struct PixelColor {
+    uint8_t r, g, b;
+};
+
 class PixelWriter {
     public:
         PixelWriter(const FrameBufferConfig& config) : config_(config) {}
@@ -40,10 +44,6 @@ class BGRResv8BitPerColorPixelWriter : public PixelWriter {
             pixel[1] = color.g;
             pixel[2] = color.r;
         }
-};
-
-struct PixelColor {
-    uint8_t r, g, b;
 };
 
 int WritePixel(const FrameBufferConfig& config, int x, int y, const PixelColor& color) {
