@@ -16,7 +16,7 @@ class PixelWriter {
     protected:
         uint8_t* PixelAt(int x, int y) {
             return config_.frame_buffer + 4 * (config_.pixels_per_scan_line * y + x);
-        }    
+        }
 
     private:
         const FrameBufferConfig& config_;
