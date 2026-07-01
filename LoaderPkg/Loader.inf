@@ -12,6 +12,9 @@
 
 [Sources]
   Main.c
+  Elf.c
+  MemoryMap.c
+  Graphics.c
 
 [Packages]
   MdePkg/MdePkg.dec

@@ -1,177 +1,19 @@
+#include "Elf.h"
+#include "Graphics.h"
+#include "MemoryMap.h"
 #include "frame_buffer_config.hpp"
+
 #include <Guid/FileInfo.h>
-#include <Library/BaseMemoryLib.h>
 #include <Library/MemoryAllocationLib.h>
-#include <Library/PrintLib.h>
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiLib.h>
-#include <Protocol/BlockIo.h>
-#include <Protocol/DiskIo2.h>
 #include <Protocol/LoadedImage.h>
 #include <Protocol/SimpleFileSystem.h>
 #include <Uefi.h>
 
-// ELF64型定義
-#pragma pack(1)
-typedef struct {
-  UINT8 e_ident[16];
-  UINT16 e_type;
-  UINT16 e_machine;
-  UINT32 e_version;
-  UINT64 e_entry;
-  UINT64 e_phoff;
-  UINT64 e_shoff;
-  UINT32 e_flags;
-  UINT16 e_ehsize;
-  UINT16 e_phentsize;
-  UINT16 e_phnum;
-  UINT16 e_shentsize;
-  UINT16 e_shnum;
-  UINT16 e_shstrndx;
-} Elf64_Ehdr;
-
-typedef struct {
-  UINT32 p_type;
-  UINT32 p_flags;
-  UINT64 p_offset;
-  UINT64 p_vaddr;
-  UINT64 p_paddr;
-  UINT64 p_filesz;
-  UINT64 p_memsz;
-  UINT64 p_align;
-} Elf64_Phdr;
-
-typedef UINT16 Elf64_Half;
-#pragma pack()
-
-#define PT_LOAD 1
-#define ET_EXEC 2
-#define ET_DYN 3
-#define ELFMAG0 0x7f
-#ifndef UINT64_MAX
-#define UINT64_MAX 0xFFFFFFFFFFFFFFFFULL
-#endif
-
-struct MemoryMap {
-  UINTN buffer_size;
-  VOID *buffer;
-  UINTN map_size;
-  UINTN map_key;
-  UINTN descriptor_size;
-  UINT32 descriptor_version;
-};
-
-EFI_STATUS GetMemoryMap(struct MemoryMap *map) {
-  if (map->buffer == NULL) {
-    return EFI_BUFFER_TOO_SMALL;
-  }
-
-  map->map_size = map->buffer_size;
-  return gBS->GetMemoryMap(&map->map_size, (EFI_MEMORY_DESCRIPTOR *)map->buffer,
-                           &map->map_key, &map->descriptor_size,
-                           &map->descriptor_version);
-}
-
-const CHAR16 *GetMemoryTypeUnicode(EFI_MEMORY_TYPE type) {
-  switch (type) {
-  case EfiReservedMemoryType:
-    return L"EfiReservedMemoryType";
-  case EfiLoaderCode:
-    return L"EfiLoaderCode";
-  case EfiLoaderData:
-    return L"EfiLoaderData";
-  case EfiBootServicesCode:
-    return L"EfiBootServicesCode";
-  case EfiBootServicesData:
-    return L"EfiBootServicesData";
-  case EfiRuntimeServicesCode:
-    return L"EfiRuntimeServicesCode";
-  case EfiRuntimeServicesData:
-    return L"EfiRuntimeServicesData";
-  case EfiConventionalMemory:
-    return L"EfiConventionalMemory";
-  case EfiUnusableMemory:
-    return L"EfiUnusableMemory";
-  case EfiACPIReclaimMemory:
-    return L"EfiACPIReclaimMemory";
-  case EfiACPIMemoryNVS:
-    return L"EfiACPIMemoryNVS";
-  case EfiMemoryMappedIO:
-    return L"EfiMemoryMappedIO";
-  case EfiMemoryMappedIOPortSpace:
-    return L"EfiMemoryMappedIOPortSpace";
-  case EfiPalCode:
-    return L"EfiPalCode";
-  case EfiPersistentMemory:
-    return L"EfiPersistentMemory";
-  case EfiMaxMemoryType:
-    return L"EfiMaxMemoryType";
-  default:
-    return L"InvalidMemoryType";
-  }
-}
-
-EFI_STATUS SaveMemoryMap(struct MemoryMap *map, EFI_FILE_PROTOCOL *file) {
-  EFI_STATUS status;
-  CHAR8 buf[256];
-  UINTN len;
-
-  CHAR8 *header =
-      "Index, Type, Type(name), PhysicalStart, NumberOfPages, Attribute\n";
-  len = AsciiStrLen(header);
-  status = file->Write(file, &len, header);
-  if (EFI_ERROR(status)) {
-    return status;
-  }
-
-  Print(L"map->buffer = %08lx, map->map_size = %08lx\n", map->buffer,
-        map->map_size);
-
-  EFI_PHYSICAL_ADDRESS iter;
-  int i;
-  for (iter = (EFI_PHYSICAL_ADDRESS)map->buffer, i = 0;
-       iter < (EFI_PHYSICAL_ADDRESS)map->buffer + map->map_size;
-       iter += map->descriptor_size, i++) {
-    EFI_MEMORY_DESCRIPTOR *desc = (EFI_MEMORY_DESCRIPTOR *)iter;
-    len = AsciiSPrint(buf, sizeof(buf), "%u, %x, %-ls, %08lx, %lx, %lx\n", i,
-                      desc->Type, GetMemoryTypeUnicode(desc->Type),
-                      desc->PhysicalStart, desc->NumberOfPages,
-                      desc->Attribute & 0xffffflu);
-    status = file->Write(file, &len, buf);
-    if (EFI_ERROR(status)) {
-      return status;
-    }
-  }
-
-  return EFI_SUCCESS;
-}
-
-void CalcLoadAdrrRange(Elf64_Ehdr *kernel_ehdr, UINT64 *kernel_first_addr,
-                       UINT64 *kernel_last_addr) {
-  Elf64_Phdr *phdr = (Elf64_Phdr *)((UINT64)kernel_ehdr + kernel_ehdr->e_phoff);
-  *kernel_first_addr = UINT64_MAX;
-  *kernel_last_addr = 0;
-  for (int i = 0; i < kernel_ehdr->e_phnum; i++) {
-    if (phdr[i].p_type == PT_LOAD) {
-      *kernel_first_addr = MIN(*kernel_first_addr, phdr[i].p_vaddr);
-      *kernel_last_addr =
-          MAX(*kernel_last_addr, phdr[i].p_vaddr + phdr[i].p_memsz);
-    }
-  }
-}
-
-void CopyLoadSegments(Elf64_Ehdr *ehdr) {
-  Elf64_Phdr *phdr = (Elf64_Phdr *)((UINT64)ehdr + ehdr->e_phoff);
-  for (Elf64_Half i = 0; i < ehdr->e_phnum; ++i) {
-    if (phdr[i].p_type != PT_LOAD)
-      continue;
-
-    UINT64 segm_in_file = (UINT64)ehdr + phdr[i].p_offset;
-    CopyMem((VOID *)phdr[i].p_vaddr, (VOID *)segm_in_file, phdr[i].p_filesz);
-
-    UINTN remain_bytes = phdr[i].p_memsz - phdr[i].p_filesz;
-    SetMem((VOID *)(phdr[i].p_vaddr + phdr[i].p_filesz), remain_bytes, 0);
-  }
+void Halt(void) {
+  while (1)
+    __asm__("hlt");
 }
 
 EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL **root) {
@@ -194,52 +36,6 @@ EFI_STATUS OpenRootDir(EFI_HANDLE image_handle, EFI_FILE_PROTOCOL **root) {
   }
 
   return fs->OpenVolume(fs, root);
-}
-
-EFI_STATUS OpenGOP(EFI_HANDLE image_handle,
-                   EFI_GRAPHICS_OUTPUT_PROTOCOL **gop) {
-  EFI_STATUS status;
-  UINTN num_gop_handles = 0;
-  EFI_HANDLE *gop_handles = NULL;
-
-  status = gBS->LocateHandleBuffer(ByProtocol, &gEfiGraphicsOutputProtocolGuid,
-                                   NULL, &num_gop_handles, &gop_handles);
-  if (EFI_ERROR(status)) {
-    return status;
-  }
-
-  status = gBS->OpenProtocol(gop_handles[0], &gEfiGraphicsOutputProtocolGuid,
-                             (VOID **)gop, image_handle, NULL,
-                             EFI_OPEN_PROTOCOL_BY_HANDLE_PROTOCOL);
-  if (EFI_ERROR(status)) {
-    return status;
-  }
-
-  FreePool(gop_handles);
-
-  return EFI_SUCCESS;
-}
-
-const CHAR16 *GetPixelFormatUnicode(EFI_GRAPHICS_PIXEL_FORMAT fmt) {
-  switch (fmt) {
-  case PixelRedGreenBlueReserved8BitPerColor:
-    return L"PixelRedGreenBlueReserved8BitPerColor";
-  case PixelBlueGreenRedReserved8BitPerColor:
-    return L"PixelBlueGreenRedReserved8BitPerColor";
-  case PixelBitMask:
-    return L"PixelBitMask";
-  case PixelBltOnly:
-    return L"PixelBltOnly";
-  case PixelFormatMax:
-    return L"PixelFormatMax";
-  default:
-    return L"InvalidPixelFormat";
-  }
-}
-
-void Halt(void) {
-  while (1)
-    __asm__("hlt");
 }
 
 EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
@@ -300,11 +96,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
         gop->Mode->FrameBufferBase + gop->Mode->FrameBufferSize,
         gop->Mode->FrameBufferSize);
 
-  //   UINT8* frame_buffer = (UINT8*)gop->Mode->FrameBufferBase;
-  //   for (UINTN i = 0; i < gop->Mode->FrameBufferSize; ++i) {
-  //     frame_buffer[i] = 255;
-  //   }
-
   EFI_FILE_PROTOCOL *kernel_file;
   status = root_dir->Open(root_dir, &kernel_file, L"\\kernel.elf",
                           EFI_FILE_MODE_READ, 0);
@@ -339,7 +130,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   }
 
   Elf64_Ehdr *kernel_ehdr = (Elf64_Ehdr *)kernel_buffer;
-  // まずマジックナンバーを確認してからe_typeを検証する
   if (kernel_ehdr->e_ident[0] != ELFMAG0 || kernel_ehdr->e_ident[1] != 'E' ||
       kernel_ehdr->e_ident[2] != 'L' || kernel_ehdr->e_ident[3] != 'F') {
     Print(L"Invalid ELF magic: %02x %02x %02x %02x\n", kernel_ehdr->e_ident[0],
@@ -351,6 +141,7 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
     Print(L"not an executable ELF file (e_type=%u)\n", kernel_ehdr->e_type);
     Halt();
   }
+
   UINT64 kernel_first_addr, kernel_last_addr;
   CalcLoadAdrrRange(kernel_ehdr, &kernel_first_addr, &kernel_last_addr);
   UINTN num_pages = (kernel_last_addr - kernel_first_addr + 0xfff) / 0x1000;
