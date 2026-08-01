@@ -39,7 +39,7 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
     }
   }
 
-  WriteAscii(frame_buffer_config, 8, 8, 'A', {0, 0, 0});
+  WriteString(frame_buffer_config, 8, 8, "Hello, World!", {0, 0, 0});
 
   while (1) __asm__("hlt");
 }

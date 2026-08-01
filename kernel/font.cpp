@@ -31,3 +31,9 @@ void WriteAscii(const FrameBufferConfig& config, int x, int y, char c,
     }
   }
 }
+
+void WriteString(const FrameBufferConfig& config, int x, int y, const char* s,const PixelColor& color) {
+  for (int i = 0; s[i] != '\0'; i++) {
+    WriteAscii(config, x + 8 * i, y, s[i], color);
+  }
+}

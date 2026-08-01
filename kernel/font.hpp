@@ -5,3 +5,5 @@
 
 void WriteAscii(const FrameBufferConfig& config, int x, int y, char c,
                 const PixelColor& color);
+
+void WriteString(const FrameBufferConfig& config, int x, int y, const char* s,const PixelColor& color);
