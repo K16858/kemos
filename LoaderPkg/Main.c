@@ -155,6 +155,9 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
   CopyLoadSegments(kernel_ehdr);
   Print(L"Kernel: 0x%0lx (%lu bytes)\n", kernel_first_addr, kernel_file_size);
 
+  UINT64 entry_addr = kernel_ehdr->e_entry;
+  Print(L"ELF Entry Point: 0x%0lx\n", entry_addr);
+
   status = gBS->FreePool(kernel_buffer);
   if (EFI_ERROR(status)) {
     Print(L"failed to free pool: %r", status);
@@ -166,8 +169,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
     Print(L"failed to close kernel file: %r\n", status);
     Halt();
   }
-
-  Print(L"ELF Entry Point: 0x%0lx\n", kernel_ehdr->e_entry);
 
   // #@@range_begin(exit_bs)
   status = gBS->ExitBootServices(image_handle, memmap.map_key);
@@ -184,8 +185,6 @@ EFI_STATUS EFIAPI UefiMain(EFI_HANDLE image_handle,
     }
   }
   // #@@range_end(exit_bs)
-
-  UINT64 entry_addr = kernel_ehdr->e_entry;
 
   // #@@range_begin(pass_frame_buffer_config)
   struct FrameBufferConfig config = {(UINT8 *)gop->Mode->FrameBufferBase,
