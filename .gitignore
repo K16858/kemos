@@ -8,3 +8,6 @@
 *.fd
 mnt/
 devenv/
+notes/
+kernel/font/terminus.bin
+kernel/font/terminus_data.cpp
