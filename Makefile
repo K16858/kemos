@@ -19,7 +19,10 @@ SCRIPTS_DIR := $(PROJECT_ROOT)/scripts
 
 # ソースファイル
 LOADER_SRC := $(LOADER_DIR)/Main.c
-KERNEL_SRC := $(KERNEL_DIR)/main.cpp
+KERNEL_OBJS := $(KERNEL_DIR)/main.o $(KERNEL_DIR)/font.o $(KERNEL_DIR)/terminus_data.o
+FONT_BDF := $(KERNEL_DIR)/font/ter-u16n.bdf
+FONT_BIN := $(KERNEL_DIR)/font/terminus.bin
+FONT_DATA_CPP := $(KERNEL_DIR)/font/terminus_data.cpp
 
 # === デフォルトターゲット ===
 all: build
@@ -66,15 +69,33 @@ $(LOADER_EFI): $(LOADER_SRC) $(LOADER_DIR)/Loader.inf $(LOADER_DIR)/LoaderPkg.ds
 kernel: $(KERNEL_ELF)
 	@echo "[DONE] Kernel build completed"
 
-$(KERNEL_ELF): $(KERNEL_SRC) devenv/buildenv.sh
-	@echo "[BUILD] Building kernel..."
+$(FONT_BIN) $(FONT_DATA_CPP): $(FONT_BDF) $(KERNEL_DIR)/font/bdf2bin.py
+	@echo "[BUILD] Converting Terminus BDF..."
+	@python3 $(KERNEL_DIR)/font/bdf2bin.py $(FONT_BDF) $(FONT_BIN) --cpp $(FONT_DATA_CPP)
+
+$(KERNEL_DIR)/terminus_data.o: $(FONT_DATA_CPP) devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		cd $(KERNEL_DIR) && \
 		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
 		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-c main.cpp -o main.o && \
+		-c $(FONT_DATA_CPP) -o $(KERNEL_DIR)/terminus_data.o"
+
+$(KERNEL_DIR)/main.o: $(KERNEL_DIR)/main.cpp $(KERNEL_DIR)/font.hpp $(KERNEL_DIR)/graphics.hpp $(KERNEL_DIR)/frame_buffer_config.hpp devenv/buildenv.sh
+	@bash -c "source devenv/buildenv.sh && \
+		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
+		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
+		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/main.cpp -o $(KERNEL_DIR)/main.o"
+
+$(KERNEL_DIR)/font.o: $(KERNEL_DIR)/font.cpp $(KERNEL_DIR)/font.hpp $(KERNEL_DIR)/graphics.hpp devenv/buildenv.sh
+	@bash -c "source devenv/buildenv.sh && \
+		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
+		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
+		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/font.cpp -o $(KERNEL_DIR)/font.o"
+
+$(KERNEL_ELF): $(KERNEL_OBJS) devenv/buildenv.sh
+	@echo "[BUILD] Linking kernel..."
+	@bash -c "source devenv/buildenv.sh && \
 		ld.lld \$$LDFLAGS --entry KernelMain -z norelro --image-base 0x100000 \
-		--static -o $(PROJECT_ROOT)/$(KERNEL_ELF) main.o" || \
+		--static -o $(PROJECT_ROOT)/$(KERNEL_ELF) $(KERNEL_OBJS)" || \
 		(echo "[ERROR] Kernel build failed"; exit 1)
 	@ls -lh $(KERNEL_ELF)
 
@@ -121,7 +142,8 @@ test: clean build disk
 clean:
 	@echo "[CLEAN] Cleaning up..."
 	@rm -f Loader.efi $(KERNEL_ELF) $(DISK_IMG)
-	@rm -f $(KERNEL_DIR)/main.o
+	@rm -f $(KERNEL_DIR)/main.o $(KERNEL_DIR)/font.o $(KERNEL_DIR)/terminus_data.o
+	@rm -f $(FONT_BIN) $(FONT_DATA_CPP)
 	@rm -rf $(MOUNT_POINT)
 	@if [ -d $(BUILD_DIR) ]; then \
 		echo "  Cleaning EDK2 build directory..."; \
