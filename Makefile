@@ -79,7 +79,7 @@ $(KERNEL_DIR)/terminus_data.o: $(FONT_DATA_CPP) devenv/buildenv.sh
 		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
 		-c $(FONT_DATA_CPP) -o $(KERNEL_DIR)/terminus_data.o"
 
-$(KERNEL_DIR)/main.o: $(KERNEL_DIR)/main.cpp $(KERNEL_DIR)/font.hpp $(KERNEL_DIR)/graphics.hpp $(KERNEL_DIR)/frame_buffer_config.hpp devenv/buildenv.sh
+$(KERNEL_DIR)/main.o: $(KERNEL_DIR)/main.cpp $(KERNEL_DIR)/console.hpp $(KERNEL_DIR)/graphics.hpp $(KERNEL_DIR)/frame_buffer_config.hpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
 		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
 		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
