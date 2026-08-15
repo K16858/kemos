@@ -19,7 +19,7 @@ SCRIPTS_DIR := $(PROJECT_ROOT)/scripts
 
 # ソースファイル
 LOADER_SRC := $(LOADER_DIR)/Main.c
-KERNEL_OBJS := $(KERNEL_DIR)/main.o $(KERNEL_DIR)/font.o $(KERNEL_DIR)/terminus_data.o
+KERNEL_OBJS := $(KERNEL_DIR)/main.o $(KERNEL_DIR)/font.o $(KERNEL_DIR)/terminus_data.o $(KERNEL_DIR)/console.o
 FONT_BDF := $(KERNEL_DIR)/font/ter-u16n.bdf
 FONT_BIN := $(KERNEL_DIR)/font/terminus.bin
 FONT_DATA_CPP := $(KERNEL_DIR)/font/terminus_data.cpp
@@ -91,6 +91,12 @@ $(KERNEL_DIR)/font.o: $(KERNEL_DIR)/font.cpp $(KERNEL_DIR)/font.hpp $(KERNEL_DIR
 		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
 		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/font.cpp -o $(KERNEL_DIR)/font.o"
 
+$(KERNEL_DIR)/console.o: $(KERNEL_DIR)/console.cpp $(KERNEL_DIR)/console.hpp $(KERNEL_DIR)/font.hpp $(KERNEL_DIR)/graphics.hpp devenv/buildenv.sh
+	@bash -c "source devenv/buildenv.sh && \
+		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
+		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
+		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/console.cpp -o $(KERNEL_DIR)/console.o"
+
 $(KERNEL_ELF): $(KERNEL_OBJS) devenv/buildenv.sh
 	@echo "[BUILD] Linking kernel..."
 	@bash -c "source devenv/buildenv.sh && \
@@ -142,7 +148,7 @@ test: clean build disk
 clean:
 	@echo "[CLEAN] Cleaning up..."
 	@rm -f Loader.efi $(KERNEL_ELF) $(DISK_IMG)
-	@rm -f $(KERNEL_DIR)/main.o $(KERNEL_DIR)/font.o $(KERNEL_DIR)/terminus_data.o
+	@rm -f $(KERNEL_DIR)/main.o $(KERNEL_DIR)/font.o $(KERNEL_DIR)/terminus_data.o $(KERNEL_DIR)/console.o
 	@rm -f $(FONT_BIN) $(FONT_DATA_CPP)
 	@rm -rf $(MOUNT_POINT)
 	@if [ -d $(BUILD_DIR) ]; then \
