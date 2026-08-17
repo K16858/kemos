@@ -5,8 +5,11 @@
 #include "console.hpp"
 #include "frame_buffer_config.hpp"
 #include "graphics.hpp"
+#include "interrupt.hpp"
 
 extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
+  __asm__("cli");
+
   char pixel_writer_buf[sizeof(RGBResv8BitPerColorPixelWriter)];
   PixelWriter* writer;
   if (frame_buffer_config.pixel_format == kPixelRGBResv8BitPerColor) {
@@ -29,6 +32,9 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
 
   Console console{*writer, white, black};
   console.PutString("Hello, KEMOS!\n");
+
+  SetupInterrupt(&console);
+  __asm__("int $0x40");
 
   while (1) __asm__("hlt");
 }
