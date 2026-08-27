@@ -46,6 +46,21 @@ void Console::Backspace() {
   buffer_[cursor_row_][cursor_column_] = 0;
 }
 
+void Console::Clear() {
+  for (int y = 0; y < 16 * kRows; ++y) {
+    for (int x = 0; x < 8 * kColumns; ++x) {
+      writer_.Write(x, y, bg_color_);
+    }
+  }
+  cursor_row_ = 0;
+  cursor_column_ = 0;
+  for (int row = 0; row < kRows; ++row) {
+    for (int col = 0; col < kColumns + 1; ++col) {
+      buffer_[row][col] = 0;
+    }
+  }
+}
+
 void Console::NewLine() {
   cursor_column_ = 0;
   if (cursor_row_ < kRows - 1) {
