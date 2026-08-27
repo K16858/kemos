@@ -9,7 +9,7 @@ constexpr uint16_t kKeyboardDataPort = 0x0060;
 constexpr uint8_t kKeyLeftShift = 0x2a;
 constexpr uint8_t kKeyRightShift = 0x36;
 
-Console* g_keyboard_console = nullptr;
+void (*g_key_listener)(char) = nullptr;
 bool shift_pressed = false;
 
 const char keycode_map[0x80] = {
@@ -55,16 +55,18 @@ extern "C" void IntHandlerKeyboard_C() {
   const uint8_t keycode = IoIn8(kKeyboardDataPort);
   if (!UpdateShiftState(keycode)) {
     const char c = KeycodeToChar(keycode);
-    if (c != 0 && g_keyboard_console != nullptr) {
-      char buf[2] = {c, '\0'};
-      g_keyboard_console->PutString(buf);
+    if (c != 0 && g_key_listener != nullptr) {
+      g_key_listener(c);
     }
   }
   NotifyEndOfInterrupt();
 }
 
-void InitializeKeyboard(Console* console) {
-  g_keyboard_console = console;
+void InitializeKeyboard() {
   shift_pressed = false;
   EnableKeyboardInterrupt();
+}
+
+void SetKeyListener(void (*listener)(char c)) {
+  g_key_listener = listener;
 }

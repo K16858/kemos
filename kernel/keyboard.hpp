@@ -1,5 +1,4 @@
 #pragma once
 
-#include "console.hpp"
-
-void InitializeKeyboard(Console* console);
+void InitializeKeyboard();
+void SetKeyListener(void (*listener)(char c));
