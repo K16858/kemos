@@ -9,5 +9,5 @@
 mnt/
 devenv/
 notes/
-kernel/font/terminus.bin
-kernel/font/terminus_data.cpp
+kernel/graphics/font/terminus.bin
+kernel/graphics/font/terminus_data.cpp
