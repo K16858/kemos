@@ -20,7 +20,8 @@ SCRIPTS_DIR := $(PROJECT_ROOT)/scripts
 # ソースファイル
 LOADER_SRC := $(LOADER_DIR)/Main.c
 KERNEL_OBJS := $(KERNEL_DIR)/main.o $(KERNEL_DIR)/font.o $(KERNEL_DIR)/terminus_data.o \
-	$(KERNEL_DIR)/console.o $(KERNEL_DIR)/interrupt.o $(KERNEL_DIR)/asmfunc.o
+	$(KERNEL_DIR)/console.o $(KERNEL_DIR)/interrupt.o $(KERNEL_DIR)/asmfunc.o \
+	$(KERNEL_DIR)/pic.o
 FONT_BDF := $(KERNEL_DIR)/font/ter-u16n.bdf
 FONT_BIN := $(KERNEL_DIR)/font/terminus.bin
 FONT_DATA_CPP := $(KERNEL_DIR)/font/terminus_data.cpp
@@ -80,7 +81,7 @@ $(KERNEL_DIR)/terminus_data.o: $(FONT_DATA_CPP) devenv/buildenv.sh
 		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
 		-c $(FONT_DATA_CPP) -o $(KERNEL_DIR)/terminus_data.o"
 
-$(KERNEL_DIR)/main.o: $(KERNEL_DIR)/main.cpp $(KERNEL_DIR)/console.hpp $(KERNEL_DIR)/interrupt.hpp $(KERNEL_DIR)/graphics.hpp $(KERNEL_DIR)/frame_buffer_config.hpp devenv/buildenv.sh
+$(KERNEL_DIR)/main.o: $(KERNEL_DIR)/main.cpp $(KERNEL_DIR)/console.hpp $(KERNEL_DIR)/interrupt.hpp $(KERNEL_DIR)/pic.hpp $(KERNEL_DIR)/graphics.hpp $(KERNEL_DIR)/frame_buffer_config.hpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
 		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
 		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
@@ -103,6 +104,12 @@ $(KERNEL_DIR)/interrupt.o: $(KERNEL_DIR)/interrupt.cpp $(KERNEL_DIR)/interrupt.h
 		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
 		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
 		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/interrupt.cpp -o $(KERNEL_DIR)/interrupt.o"
+
+$(KERNEL_DIR)/pic.o: $(KERNEL_DIR)/pic.cpp $(KERNEL_DIR)/pic.hpp $(KERNEL_DIR)/asmfunc.h devenv/buildenv.sh
+	@bash -c "source devenv/buildenv.sh && \
+		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
+		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
+		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/pic.cpp -o $(KERNEL_DIR)/pic.o"
 
 $(KERNEL_DIR)/asmfunc.o: $(KERNEL_DIR)/asmfunc.asm
 	@nasm -f elf64 -o $(KERNEL_DIR)/asmfunc.o $(KERNEL_DIR)/asmfunc.asm
@@ -159,7 +166,8 @@ clean:
 	@echo "[CLEAN] Cleaning up..."
 	@rm -f Loader.efi $(KERNEL_ELF) $(DISK_IMG)
 	@rm -f $(KERNEL_DIR)/main.o $(KERNEL_DIR)/font.o $(KERNEL_DIR)/terminus_data.o \
-		$(KERNEL_DIR)/console.o $(KERNEL_DIR)/interrupt.o $(KERNEL_DIR)/asmfunc.o
+		$(KERNEL_DIR)/console.o $(KERNEL_DIR)/interrupt.o $(KERNEL_DIR)/asmfunc.o \
+		$(KERNEL_DIR)/pic.o
 	@rm -f $(FONT_BIN) $(FONT_DATA_CPP)
 	@rm -rf $(MOUNT_POINT)
 	@if [ -d $(BUILD_DIR) ]; then \

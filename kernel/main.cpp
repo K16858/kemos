@@ -6,6 +6,7 @@
 #include "frame_buffer_config.hpp"
 #include "graphics.hpp"
 #include "interrupt.hpp"
+#include "pic.hpp"
 
 extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   __asm__("cli");
@@ -35,6 +36,10 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
 
   SetupInterrupt(&console);
   __asm__("int $0x40");
+
+  InitializePIC();
+  __asm__("sti");
+  console.PutString("PIC ok, sti\n");
 
   while (1) __asm__("hlt");
 }
