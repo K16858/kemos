@@ -9,22 +9,32 @@ constexpr uint16_t kKeyboardDataPort = 0x0060;
 
 Console* g_keyboard_console = nullptr;
 
-void PutHex8(Console& console, uint8_t value) {
-  static const char kHex[] = "0123456789abcdef";
-  char buf[4];
-  buf[0] = kHex[(value >> 4) & 0xf];
-  buf[1] = kHex[value & 0xf];
-  buf[2] = ' ';
-  buf[3] = '\0';
-  console.PutString(buf);
+const char keycode_map[0x80] = {
+    0,    0,    '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9',  '0',  '-',
+    '=',  0,    0,    'q',  'w',  'e',  'r',  't',  'y',  'u',  'i',  'o',  'p',
+    '[',  ']',  '\n', 0,    'a',  's',  'd',  'f',  'g',  'h',  'j',  'k',  'l',
+    ';',  '\'', '`',  0,    '\\', 'z',  'x',  'c',  'v',  'b',  'n',  'm',  ',',
+    '.',  '/',  0,    '*',  0,    ' ',
+};
+
+char KeycodeToChar(uint8_t keycode) {
+  if ((keycode & 0x80) != 0) {
+    return 0;
+  }
+  if (keycode >= sizeof(keycode_map)) {
+    return 0;
+  }
+  return keycode_map[keycode];
 }
 
 }  // namespace
 
 extern "C" void IntHandlerKeyboard_C() {
   const uint8_t keycode = IoIn8(kKeyboardDataPort);
-  if (g_keyboard_console != nullptr) {
-    PutHex8(*g_keyboard_console, keycode);
+  const char c = KeycodeToChar(keycode);
+  if (c != 0 && g_keyboard_console != nullptr) {
+    char buf[2] = {c, '\0'};
+    g_keyboard_console->PutString(buf);
   }
   NotifyEndOfInterrupt();
 }

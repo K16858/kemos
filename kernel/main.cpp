@@ -41,7 +41,7 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   InitializePIC();
   InitializeKeyboard(&console);
   __asm__("sti");
-  console.PutString("keyboard irq ready\n");
+  console.PutString("type keys\n");
 
   while (1) __asm__("hlt");
 }
