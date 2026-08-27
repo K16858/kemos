@@ -34,3 +34,8 @@ void InitializePIC() {
 void NotifyEndOfInterrupt() {
   IoOut8(kPic1Command, 0x20);
 }
+
+void EnableKeyboardInterrupt() {
+  IoOut8(kPic1Data, 0xfd);
+  IoOut8(kPic2Data, 0xff);
+}

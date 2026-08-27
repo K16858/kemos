@@ -2,3 +2,4 @@
 
 void InitializePIC();
 void NotifyEndOfInterrupt();
+void EnableKeyboardInterrupt();
