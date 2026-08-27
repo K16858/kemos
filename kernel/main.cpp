@@ -8,6 +8,7 @@
 #include "interrupt.hpp"
 #include "keyboard.hpp"
 #include "pic.hpp"
+#include "printk.hpp"
 
 extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   __asm__("cli");
@@ -33,7 +34,8 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   }
 
   Console console{*writer, white, black};
-  console.PutString("Hello, KEMOS!\n");
+  SetLogConsole(&console);
+  printk("Hello, KEMOS!\n");
 
   SetupInterrupt(&console);
   __asm__("int $0x40");
@@ -41,7 +43,7 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   InitializePIC();
   InitializeKeyboard(&console);
   __asm__("sti");
-  console.PutString("type keys\n");
+  printk("ready: shift + printk\n");
 
   while (1) __asm__("hlt");
 }
