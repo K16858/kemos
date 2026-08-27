@@ -9,6 +9,8 @@
 #include "keyboard.hpp"
 #include "pic.hpp"
 #include "printk.hpp"
+#include "readline.hpp"
+#include "shell.hpp"
 
 extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   __asm__("cli");
@@ -41,9 +43,13 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   __asm__("int $0x40");
 
   InitializePIC();
-  InitializeKeyboard(&console);
+  InitializeKeyboard();
+  SetKeyListener(ReadLinePushChar);
+  InitializeShell(&console);
   __asm__("sti");
-  printk("ready: shift + printk\n");
 
-  while (1) __asm__("hlt");
+  while (1) {
+    __asm__("hlt");
+    ShellPoll();
+  }
 }
