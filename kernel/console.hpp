@@ -12,6 +12,7 @@ class Console {
 
     private:
         void NewLine();
+        void Backspace();
 
         PixelWriter& writer_;
         const PixelColor fg_color_, bg_color_;

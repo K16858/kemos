@@ -20,6 +20,8 @@ void Console::PutString(const char* s) {
   while (*s) {
     if (*s == '\n') {
       NewLine();
+    } else if (*s == '\b') {
+      Backspace();
     } else {
       WriteAscii(writer_, 8 * cursor_column_, 16 * cursor_row_, *s, fg_color_);
       buffer_[cursor_row_][cursor_column_] = *s;
@@ -29,6 +31,19 @@ void Console::PutString(const char* s) {
     }
     ++s;
   }
+}
+
+void Console::Backspace() {
+  if (cursor_column_ == 0) {
+    return;
+  }
+  --cursor_column_;
+  for (int dy = 0; dy < 16; ++dy) {
+    for (int dx = 0; dx < 8; ++dx) {
+      writer_.Write(8 * cursor_column_ + dx, 16 * cursor_row_ + dy, bg_color_);
+    }
+  }
+  buffer_[cursor_row_][cursor_column_] = 0;
 }
 
 void Console::NewLine() {
