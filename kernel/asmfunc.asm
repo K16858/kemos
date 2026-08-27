@@ -49,3 +49,20 @@ IntHandlerInt40:
     pop rcx
     pop rax
     iretq
+
+; void IoOut8(uint16_t addr, uint8_t data);
+; rdi = addr, rsi = data
+global IoOut8
+IoOut8:
+    mov dx, di
+    mov al, sil
+    out dx, al
+    ret
+
+; uint8_t IoIn8(uint16_t addr);
+; rdi = addr, return al
+global IoIn8
+IoIn8:
+    mov dx, di
+    in al, dx
+    ret
