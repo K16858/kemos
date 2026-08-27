@@ -1,6 +1,6 @@
 #pragma once
 
-#include "console.hpp"
+#include "graphics/console.hpp"
 
 void InitializeShell(Console* console);
 void ShellPoll();

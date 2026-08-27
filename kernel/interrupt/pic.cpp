@@ -1,6 +1,6 @@
-#include "pic.hpp"
+#include "interrupt/pic.hpp"
 
-#include "asmfunc.h"
+#include "interrupt/asmfunc.h"
 
 namespace {
 

@@ -1,6 +1,6 @@
-#include "console.hpp"
+#include "graphics/console.hpp"
 
-#include "font.hpp"
+#include "graphics/font.hpp"
 
 Console::Console(PixelWriter& writer, const PixelColor& fg_color,
                  const PixelColor& bg_color)

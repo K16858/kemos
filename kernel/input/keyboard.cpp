@@ -1,7 +1,7 @@
-#include "keyboard.hpp"
+#include "input/keyboard.hpp"
 
-#include "asmfunc.h"
-#include "pic.hpp"
+#include "interrupt/asmfunc.h"
+#include "interrupt/pic.hpp"
 
 namespace {
 

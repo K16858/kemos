@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "console.hpp"
+#include "graphics/console.hpp"
 
 const int kInterruptVectorNumber = 0x40;
 const int kInterruptVectorIRQ1 = 0x21;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "console.hpp"
+#include "graphics/console.hpp"
 
 #include <cstddef>
 

@@ -2,15 +2,15 @@
 #include <cstddef>
 #include <new>
 
-#include "console.hpp"
-#include "frame_buffer_config.hpp"
-#include "graphics.hpp"
-#include "interrupt.hpp"
-#include "keyboard.hpp"
-#include "pic.hpp"
-#include "printk.hpp"
-#include "readline.hpp"
-#include "shell.hpp"
+#include "graphics/console.hpp"
+#include "graphics/frame_buffer_config.hpp"
+#include "graphics/graphics.hpp"
+#include "input/keyboard.hpp"
+#include "input/readline.hpp"
+#include "interrupt/interrupt.hpp"
+#include "interrupt/pic.hpp"
+#include "shell/printk.hpp"
+#include "shell/shell.hpp"
 
 extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   __asm__("cli");

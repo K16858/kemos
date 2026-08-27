@@ -19,13 +19,30 @@ SCRIPTS_DIR := $(PROJECT_ROOT)/scripts
 
 # ソースファイル
 LOADER_SRC := $(LOADER_DIR)/Main.c
-KERNEL_OBJS := $(KERNEL_DIR)/main.o $(KERNEL_DIR)/font.o $(KERNEL_DIR)/terminus_data.o \
-	$(KERNEL_DIR)/console.o $(KERNEL_DIR)/interrupt.o $(KERNEL_DIR)/asmfunc.o \
-	$(KERNEL_DIR)/pic.o $(KERNEL_DIR)/keyboard.o $(KERNEL_DIR)/printk.o \
-	$(KERNEL_DIR)/readline.o $(KERNEL_DIR)/shell.o
-FONT_BDF := $(KERNEL_DIR)/font/ter-u16n.bdf
-FONT_BIN := $(KERNEL_DIR)/font/terminus.bin
-FONT_DATA_CPP := $(KERNEL_DIR)/font/terminus_data.cpp
+GRAPHICS_DIR := $(KERNEL_DIR)/graphics
+INTERRUPT_DIR := $(KERNEL_DIR)/interrupt
+INPUT_DIR := $(KERNEL_DIR)/input
+SHELL_DIR := $(KERNEL_DIR)/shell
+
+KERNEL_CXXFLAGS := --target=x86_64-elf -O2 -Wall -g --std=c++17 \
+	-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti -I$(KERNEL_DIR)
+
+KERNEL_OBJS := \
+	$(KERNEL_DIR)/main.o \
+	$(GRAPHICS_DIR)/font.o \
+	$(GRAPHICS_DIR)/font/terminus_data.o \
+	$(GRAPHICS_DIR)/console.o \
+	$(INTERRUPT_DIR)/interrupt.o \
+	$(INTERRUPT_DIR)/asmfunc.o \
+	$(INTERRUPT_DIR)/pic.o \
+	$(INPUT_DIR)/keyboard.o \
+	$(INPUT_DIR)/readline.o \
+	$(SHELL_DIR)/printk.o \
+	$(SHELL_DIR)/shell.o
+
+FONT_BDF := $(GRAPHICS_DIR)/font/ter-u16n.bdf
+FONT_BIN := $(GRAPHICS_DIR)/font/terminus.bin
+FONT_DATA_CPP := $(GRAPHICS_DIR)/font/terminus_data.cpp
 
 # === デフォルトターゲット ===
 all: build
@@ -72,72 +89,62 @@ $(LOADER_EFI): $(LOADER_SRC) $(LOADER_DIR)/Loader.inf $(LOADER_DIR)/LoaderPkg.ds
 kernel: $(KERNEL_ELF)
 	@echo "[DONE] Kernel build completed"
 
-$(FONT_BIN) $(FONT_DATA_CPP): $(FONT_BDF) $(KERNEL_DIR)/font/bdf2bin.py
+$(FONT_BIN) $(FONT_DATA_CPP): $(FONT_BDF) $(GRAPHICS_DIR)/font/bdf2bin.py
 	@echo "[BUILD] Converting Terminus BDF..."
-	@python3 $(KERNEL_DIR)/font/bdf2bin.py $(FONT_BDF) $(FONT_BIN) --cpp $(FONT_DATA_CPP)
+	@python3 $(GRAPHICS_DIR)/font/bdf2bin.py $(FONT_BDF) $(FONT_BIN) --cpp $(FONT_DATA_CPP)
 
-$(KERNEL_DIR)/terminus_data.o: $(FONT_DATA_CPP) devenv/buildenv.sh
+$(GRAPHICS_DIR)/font/terminus_data.o: $(FONT_DATA_CPP) devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
-		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-c $(FONT_DATA_CPP) -o $(KERNEL_DIR)/terminus_data.o"
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(FONT_DATA_CPP) -o $(GRAPHICS_DIR)/font/terminus_data.o"
 
-$(KERNEL_DIR)/main.o: $(KERNEL_DIR)/main.cpp $(KERNEL_DIR)/console.hpp $(KERNEL_DIR)/interrupt.hpp $(KERNEL_DIR)/pic.hpp $(KERNEL_DIR)/keyboard.hpp $(KERNEL_DIR)/printk.hpp $(KERNEL_DIR)/readline.hpp $(KERNEL_DIR)/shell.hpp $(KERNEL_DIR)/graphics.hpp $(KERNEL_DIR)/frame_buffer_config.hpp devenv/buildenv.sh
+$(KERNEL_DIR)/main.o: $(KERNEL_DIR)/main.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
-		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/main.cpp -o $(KERNEL_DIR)/main.o"
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(KERNEL_DIR)/main.cpp -o $(KERNEL_DIR)/main.o"
 
-$(KERNEL_DIR)/font.o: $(KERNEL_DIR)/font.cpp $(KERNEL_DIR)/font.hpp $(KERNEL_DIR)/graphics.hpp devenv/buildenv.sh
+$(GRAPHICS_DIR)/font.o: $(GRAPHICS_DIR)/font.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
-		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/font.cpp -o $(KERNEL_DIR)/font.o"
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(GRAPHICS_DIR)/font.cpp -o $(GRAPHICS_DIR)/font.o"
 
-$(KERNEL_DIR)/console.o: $(KERNEL_DIR)/console.cpp $(KERNEL_DIR)/console.hpp $(KERNEL_DIR)/font.hpp $(KERNEL_DIR)/graphics.hpp devenv/buildenv.sh
+$(GRAPHICS_DIR)/console.o: $(GRAPHICS_DIR)/console.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
-		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/console.cpp -o $(KERNEL_DIR)/console.o"
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(GRAPHICS_DIR)/console.cpp -o $(GRAPHICS_DIR)/console.o"
 
-$(KERNEL_DIR)/interrupt.o: $(KERNEL_DIR)/interrupt.cpp $(KERNEL_DIR)/interrupt.hpp $(KERNEL_DIR)/asmfunc.h $(KERNEL_DIR)/console.hpp devenv/buildenv.sh
+$(INTERRUPT_DIR)/interrupt.o: $(INTERRUPT_DIR)/interrupt.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
-		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/interrupt.cpp -o $(KERNEL_DIR)/interrupt.o"
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(INTERRUPT_DIR)/interrupt.cpp -o $(INTERRUPT_DIR)/interrupt.o"
 
-$(KERNEL_DIR)/pic.o: $(KERNEL_DIR)/pic.cpp $(KERNEL_DIR)/pic.hpp $(KERNEL_DIR)/asmfunc.h devenv/buildenv.sh
+$(INTERRUPT_DIR)/pic.o: $(INTERRUPT_DIR)/pic.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
-		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/pic.cpp -o $(KERNEL_DIR)/pic.o"
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(INTERRUPT_DIR)/pic.cpp -o $(INTERRUPT_DIR)/pic.o"
 
-$(KERNEL_DIR)/keyboard.o: $(KERNEL_DIR)/keyboard.cpp $(KERNEL_DIR)/keyboard.hpp $(KERNEL_DIR)/asmfunc.h $(KERNEL_DIR)/pic.hpp devenv/buildenv.sh
+$(INTERRUPT_DIR)/asmfunc.o: $(INTERRUPT_DIR)/asmfunc.asm
+	@nasm -f elf64 -o $(INTERRUPT_DIR)/asmfunc.o $(INTERRUPT_DIR)/asmfunc.asm
+
+$(INPUT_DIR)/keyboard.o: $(INPUT_DIR)/keyboard.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
-		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/keyboard.cpp -o $(KERNEL_DIR)/keyboard.o"
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(INPUT_DIR)/keyboard.cpp -o $(INPUT_DIR)/keyboard.o"
 
-$(KERNEL_DIR)/printk.o: $(KERNEL_DIR)/printk.cpp $(KERNEL_DIR)/printk.hpp $(KERNEL_DIR)/console.hpp devenv/buildenv.sh
+$(INPUT_DIR)/readline.o: $(INPUT_DIR)/readline.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
-		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/printk.cpp -o $(KERNEL_DIR)/printk.o"
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(INPUT_DIR)/readline.cpp -o $(INPUT_DIR)/readline.o"
 
-$(KERNEL_DIR)/readline.o: $(KERNEL_DIR)/readline.cpp $(KERNEL_DIR)/readline.hpp $(KERNEL_DIR)/console.hpp devenv/buildenv.sh
+$(SHELL_DIR)/printk.o: $(SHELL_DIR)/printk.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
-		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/readline.cpp -o $(KERNEL_DIR)/readline.o"
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(SHELL_DIR)/printk.cpp -o $(SHELL_DIR)/printk.o"
 
-$(KERNEL_DIR)/shell.o: $(KERNEL_DIR)/shell.cpp $(KERNEL_DIR)/shell.hpp $(KERNEL_DIR)/console.hpp $(KERNEL_DIR)/printk.hpp $(KERNEL_DIR)/readline.hpp devenv/buildenv.sh
+$(SHELL_DIR)/shell.o: $(SHELL_DIR)/shell.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
-		clang++ \$$CPPFLAGS --target=x86_64-elf -O2 -Wall -g --std=c++17 \
-		-ffreestanding -mno-red-zone -fno-exceptions -fno-rtti \
-		-I$(KERNEL_DIR) -c $(KERNEL_DIR)/shell.cpp -o $(KERNEL_DIR)/shell.o"
-
-$(KERNEL_DIR)/asmfunc.o: $(KERNEL_DIR)/asmfunc.asm
-	@nasm -f elf64 -o $(KERNEL_DIR)/asmfunc.o $(KERNEL_DIR)/asmfunc.asm
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(SHELL_DIR)/shell.cpp -o $(SHELL_DIR)/shell.o"
 
 $(KERNEL_ELF): $(KERNEL_OBJS) devenv/buildenv.sh
 	@echo "[BUILD] Linking kernel..."
@@ -190,10 +197,7 @@ test: clean build disk
 clean:
 	@echo "[CLEAN] Cleaning up..."
 	@rm -f Loader.efi $(KERNEL_ELF) $(DISK_IMG)
-	@rm -f $(KERNEL_DIR)/main.o $(KERNEL_DIR)/font.o $(KERNEL_DIR)/terminus_data.o \
-		$(KERNEL_DIR)/console.o $(KERNEL_DIR)/interrupt.o $(KERNEL_DIR)/asmfunc.o \
-		$(KERNEL_DIR)/pic.o $(KERNEL_DIR)/keyboard.o $(KERNEL_DIR)/printk.o \
-		$(KERNEL_DIR)/readline.o $(KERNEL_DIR)/shell.o
+	@rm -f $(KERNEL_OBJS)
 	@rm -f $(FONT_BIN) $(FONT_DATA_CPP)
 	@rm -rf $(MOUNT_POINT)
 	@if [ -d $(BUILD_DIR) ]; then \

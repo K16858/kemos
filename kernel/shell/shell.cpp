@@ -1,7 +1,7 @@
-#include "shell.hpp"
+#include "shell/shell.hpp"
 
-#include "printk.hpp"
-#include "readline.hpp"
+#include "shell/printk.hpp"
+#include "input/readline.hpp"
 
 namespace {
 

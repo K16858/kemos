@@ -1,1 +1,1 @@
-../kernel/frame_buffer_config.hpp
+../kernel/graphics/frame_buffer_config.hpp

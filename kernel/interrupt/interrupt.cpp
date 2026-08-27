@@ -1,6 +1,6 @@
-#include "interrupt.hpp"
+#include "interrupt/interrupt.hpp"
 
-#include "asmfunc.h"
+#include "interrupt/asmfunc.h"
 
 namespace {
 
