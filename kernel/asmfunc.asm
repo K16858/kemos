@@ -5,7 +5,9 @@ section .text
 
 global LoadIDT
 global IntHandlerInt40
+global IntHandlerKeyboard
 extern IntHandlerInt40_C
+extern IntHandlerKeyboard_C
 
 ; void LoadIDT(uint16_t limit, void* offset);
 ; rdi = limit, rsi = offset
@@ -36,6 +38,35 @@ IntHandlerInt40:
     push r11
 
     call IntHandlerInt40_C
+
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rdi
+    pop rsi
+    pop rbp
+    pop rbx
+    pop rdx
+    pop rcx
+    pop rax
+    iretq
+
+align 16
+IntHandlerKeyboard:
+    push rax
+    push rcx
+    push rdx
+    push rbx
+    push rbp
+    push rsi
+    push rdi
+    push r8
+    push r9
+    push r10
+    push r11
+
+    call IntHandlerKeyboard_C
 
     pop r11
     pop r10
