@@ -6,6 +6,7 @@
 #include "frame_buffer_config.hpp"
 #include "graphics.hpp"
 #include "interrupt.hpp"
+#include "keyboard.hpp"
 #include "pic.hpp"
 
 extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
@@ -38,8 +39,9 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   __asm__("int $0x40");
 
   InitializePIC();
+  InitializeKeyboard(&console);
   __asm__("sti");
-  console.PutString("PIC ok, sti\n");
+  console.PutString("keyboard irq ready\n");
 
   while (1) __asm__("hlt");
 }
