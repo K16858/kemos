@@ -74,8 +74,9 @@ void SetupInterrupt(Console* console) {
     idt[i].reserved = 0;
   }
 
-  // Interrupt gate type = 14 (0xE)
   SetIDTEntry(idt[kInterruptVectorNumber], MakeAttr(14, 0),
               reinterpret_cast<uint64_t>(IntHandlerInt40), GetCS());
+  SetIDTEntry(idt[kInterruptVectorIRQ1], MakeAttr(14, 0),
+              reinterpret_cast<uint64_t>(IntHandlerKeyboard), GetCS());
   LoadIDT(sizeof(idt) - 1, reinterpret_cast<void*>(idt));
 }
