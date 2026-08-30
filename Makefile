@@ -36,6 +36,7 @@ KERNEL_OBJS := \
 	$(INTERRUPT_DIR)/asmfunc.o \
 	$(INTERRUPT_DIR)/pic.o \
 	$(INPUT_DIR)/keyboard.o \
+	$(INPUT_DIR)/keyboard_queue.o \
 	$(INPUT_DIR)/readline.o \
 	$(SHELL_DIR)/printk.o \
 	$(SHELL_DIR)/shell.o
@@ -130,6 +131,11 @@ $(INPUT_DIR)/keyboard.o: $(INPUT_DIR)/keyboard.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \
 		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
 		-c $(INPUT_DIR)/keyboard.cpp -o $(INPUT_DIR)/keyboard.o"
+
+$(INPUT_DIR)/keyboard_queue.o: $(INPUT_DIR)/keyboard_queue.cpp devenv/buildenv.sh
+	@bash -c "source devenv/buildenv.sh && \
+		clang++ \$$CPPFLAGS $(KERNEL_CXXFLAGS) \
+		-c $(INPUT_DIR)/keyboard_queue.cpp -o $(INPUT_DIR)/keyboard_queue.o"
 
 $(INPUT_DIR)/readline.o: $(INPUT_DIR)/readline.cpp devenv/buildenv.sh
 	@bash -c "source devenv/buildenv.sh && \

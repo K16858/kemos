@@ -49,6 +49,7 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
 
   while (1) {
     __asm__("hlt");
+    KeyboardPoll();
     ShellPoll();
   }
 }

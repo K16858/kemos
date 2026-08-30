@@ -1,5 +1,6 @@
 #include "input/keyboard.hpp"
 
+#include "input/keyboard_queue.hpp"
 #include "interrupt/asmfunc.h"
 #include "interrupt/pic.hpp"
 
@@ -49,16 +50,20 @@ bool UpdateShiftState(uint8_t keycode) {
   return false;
 }
 
+void ProcessScancode(uint8_t keycode) {
+  if (UpdateShiftState(keycode)) {
+    return;
+  }
+  const char c = KeycodeToChar(keycode);
+  if (c != 0 && g_key_listener != nullptr) {
+    g_key_listener(c);
+  }
+}
+
 }  // namespace
 
 extern "C" void IntHandlerKeyboard_C() {
-  const uint8_t keycode = IoIn8(kKeyboardDataPort);
-  if (!UpdateShiftState(keycode)) {
-    const char c = KeycodeToChar(keycode);
-    if (c != 0 && g_key_listener != nullptr) {
-      g_key_listener(c);
-    }
-  }
+  KeyboardQueuePush(IoIn8(kKeyboardDataPort));
   NotifyEndOfInterrupt();
 }
 
@@ -69,4 +74,11 @@ void InitializeKeyboard() {
 
 void SetKeyListener(void (*listener)(char c)) {
   g_key_listener = listener;
+}
+
+void KeyboardPoll() {
+  uint8_t keycode;
+  while (KeyboardQueuePop(&keycode)) {
+    ProcessScancode(keycode);
+  }
 }
