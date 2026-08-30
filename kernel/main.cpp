@@ -40,7 +40,6 @@ extern "C" void KernelMain(const FrameBufferConfig& frame_buffer_config) {
   printk("Hello, KEMOS!\n");
 
   SetupInterrupt(&console);
-  __asm__("int $0x40");
 
   InitializePIC();
   InitializeKeyboard();
